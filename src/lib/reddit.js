@@ -1,66 +1,90 @@
 // Reddit client for WorkCentral Monitor
-// Uses public JSON endpoints — no API key or OAuth required
-// Reddit allows ~10 unauthenticated requests per minute
-// We check 8 subreddits every 15 min = well within limits
+// Uses public JSON endpoints with browser-like headers
+// Falls back to old.reddit.com if www.reddit.com returns 403
+// Reddit blocks many datacenter IPs — browser headers help bypass this
 
-// Small delay helper to stay under rate limits
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Fetch new posts from a subreddit using public JSON endpoint
-export async function fetchNewPosts(subreddit, limit = 25) {
-  const url = `https://www.reddit.com/r/${subreddit}/new.json?limit=${limit}&raw_json=1`;
+// Browser-like headers to avoid datacenter IP blocking
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Cache-Control': 'no-cache',
+  Pragma: 'no-cache',
+  DNT: '1',
+  Connection: 'keep-alive',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+};
 
-  const response = await fetch(url, {
-    headers: {
-      // A User-Agent is required even for public endpoints
-      // Reddit blocks requests without one
-      'User-Agent': 'WorkCentralMonitor/1.0 (personal keyword monitoring tool)',
-      Accept: 'application/json',
-    },
-  });
+// Try multiple Reddit domains — some block datacenter IPs differently
+const REDDIT_DOMAINS = [
+  'https://old.reddit.com',
+  'https://www.reddit.com',
+];
 
-  if (response.status === 429) {
-    // Rate limited — wait and retry once
-    await delay(5000);
-    const retry = await fetch(url, {
-      headers: {
-        'User-Agent': 'WorkCentralMonitor/1.0 (personal keyword monitoring tool)',
-        Accept: 'application/json',
-      },
-    });
-    if (!retry.ok) {
-      throw new Error(`Reddit rate limited for r/${subreddit} after retry: ${retry.status}`);
+// Attempt fetch from each domain until one works
+async function fetchWithFallback(path) {
+  let lastError = null;
+
+  for (const domain of REDDIT_DOMAINS) {
+    const url = `${domain}${path}`;
+    try {
+      const response = await fetch(url, { headers: BROWSER_HEADERS });
+
+      if (response.status === 429) {
+        // Rate limited — wait and retry this domain once
+        await delay(5000);
+        const retry = await fetch(url, { headers: BROWSER_HEADERS });
+        if (retry.ok) {
+          return await retry.json();
+        }
+        lastError = new Error(`Rate limited at ${domain}: ${retry.status}`);
+        continue;
+      }
+
+      if (response.status === 403) {
+        // Blocked — try next domain
+        lastError = new Error(`Blocked at ${domain}: 403`);
+        continue;
+      }
+
+      if (!response.ok) {
+        lastError = new Error(`Failed at ${domain}: ${response.status}`);
+        continue;
+      }
+
+      return await response.json();
+    } catch (err) {
+      lastError = err;
+      continue;
     }
-    const retryData = await retry.json();
-    return normalizePosts(retryData);
   }
 
-  if (!response.ok) {
-    throw new Error(`Reddit fetch failed for r/${subreddit}: ${response.status}`);
-  }
+  throw lastError || new Error(`All Reddit domains failed for ${path}`);
+}
 
-  const data = await response.json();
+// Fetch new posts from a subreddit
+export async function fetchNewPosts(subreddit, limit = 25) {
+  const data = await fetchWithFallback(
+    `/r/${subreddit}/new.json?limit=${limit}&raw_json=1`
+  );
   return normalizePosts(data);
 }
 
-// Search a subreddit using public JSON search endpoint
+// Search a subreddit for specific terms
 export async function searchSubreddit(subreddit, query, limit = 25) {
-  const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&restrict_sr=on&sort=new&limit=${limit}&t=week&raw_json=1`;
-
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'WorkCentralMonitor/1.0 (personal keyword monitoring tool)',
-      Accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Reddit search failed for r/${subreddit}: ${response.status}`);
-  }
-
-  const data = await response.json();
+  const data = await fetchWithFallback(
+    `/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&restrict_sr=on&sort=new&limit=${limit}&t=week&raw_json=1`
+  );
   return normalizePosts(data);
 }
 
@@ -69,7 +93,7 @@ function normalizePosts(data) {
   if (!data?.data?.children) return [];
 
   return data.data.children
-    .filter((child) => child.kind === 't3') // t3 = link/post (not comments)
+    .filter((child) => child.kind === 't3')
     .map((child) => {
       const post = child.data;
       return {
