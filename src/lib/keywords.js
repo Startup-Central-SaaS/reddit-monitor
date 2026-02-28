@@ -148,6 +148,7 @@ export const KEYWORD_GROUPS = {
       'project management freelance',
       'all in one freelance',
       'one tool for everything',
+      'freelance',
     ],
   },
 };
