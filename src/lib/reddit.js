@@ -77,8 +77,9 @@ function parseAtomFeed(xml, subreddit) {
 
     // Extract selftext from <content> — it's HTML encoded in the feed
     const content = extractTag(entry, 'content') || '';
-    // Strip HTML tags to get plain text
+    // Strip HTML tags and comments to get plain text
     const selftext = content
+      .replace(/<!--[\s\S]*?-->/g, ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
