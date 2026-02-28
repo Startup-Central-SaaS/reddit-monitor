@@ -31,6 +31,11 @@ export async function GET(request) {
         results.postsChecked += posts.length;
 
         for (const post of posts) {
+          // Skip posts older than 48 hours
+          const postAge = Date.now() - new Date(post.reddit_created_at).getTime();
+          const maxAge = 48 * 60 * 60 * 1000; // 48 hours in milliseconds
+          if (postAge > maxAge) continue;
+
           // Score the post against keywords
           const { score, matchedKeywords, categories } = scorePost(
             post.title,
