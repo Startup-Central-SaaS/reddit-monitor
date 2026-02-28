@@ -1,5 +1,9 @@
 // WorkCentral Reddit Monitor — Keyword Configuration
 // Edit this file to customize what you're monitoring
+//
+// Strategy: Mix of specific multi-word phrases (high precision)
+// and broader single/two-word terms (higher recall, lower weight)
+// The scoring system surfaces the best leads automatically
 
 export const SUBREDDITS = [
   'freelance',
@@ -37,6 +41,9 @@ export const KEYWORD_GROUPS = {
       'freelance workflow',
       'freelance stack',
       'client workflow',
+      'admin overhead',
+      'busywork',
+      'spending hours on admin',
     ],
   },
 
@@ -63,6 +70,22 @@ export const KEYWORD_GROUPS = {
     ],
   },
 
+  // Tool mentions (medium value — discussing competitor tools, might be open to switching)
+  tool_mentions: {
+    weight: 1,
+    keywords: [
+      'freshbooks',
+      'honeybook',
+      'dubsado',
+      'bonsai freelance',
+      'harvest app',
+      'toggl track',
+      'proposify',
+      'wave accounting',
+      'and co freelance',
+    ],
+  },
+
   // Feature-specific (medium-high value — specific pain points WC solves)
   invoicing: {
     weight: 2,
@@ -84,6 +107,22 @@ export const KEYWORD_GROUPS = {
     ],
   },
 
+  invoicing_broad: {
+    weight: 1,
+    keywords: [
+      'invoicing',
+      'getting paid',
+      'unpaid client',
+      'late payment',
+      'overdue payment',
+      'payment link',
+      'send invoice',
+      'invoice reminder',
+      'client owes',
+      'net 30',
+    ],
+  },
+
   quoting: {
     weight: 2,
     keywords: [
@@ -99,19 +138,45 @@ export const KEYWORD_GROUPS = {
       'pricing proposal',
       'scope document',
       'statement of work',
+      'proposal software',
+      'quoting software',
+    ],
+  },
+
+  quoting_broad: {
+    weight: 1,
+    keywords: [
+      'pricing projects',
+      'how to price',
+      'how much to charge',
+      'project pricing',
+      'hourly vs fixed',
+      'hourly vs project',
+      'flat rate vs hourly',
+      'what to charge',
     ],
   },
 
   time_tracking: {
-    weight: 1,
+    weight: 2,
     keywords: [
       'time tracking freelance',
-      'track hours',
       'tracking billable',
       'billable hours',
       'time tracking invoicing',
-      'log hours',
       'timesheet freelance',
+    ],
+  },
+
+  time_tracking_broad: {
+    weight: 1,
+    keywords: [
+      'time tracking',
+      'track hours',
+      'log hours',
+      'tracking time',
+      'billable rate',
+      'hourly rate tracking',
     ],
   },
 
@@ -124,8 +189,34 @@ export const KEYWORD_GROUPS = {
       'client keeps adding',
       'out of scope',
       'change order',
-      'scope document',
       'avoid scope creep',
+      'scope document',
+    ],
+  },
+
+  scope_broad: {
+    weight: 1,
+    keywords: [
+      'feature creep',
+      'client expectations',
+      'project boundaries',
+      'extra work',
+      'client wants more',
+      'keeps changing requirements',
+    ],
+  },
+
+  client_management: {
+    weight: 1,
+    keywords: [
+      'client management',
+      'manage clients',
+      'client portal',
+      'client communication',
+      'onboarding clients',
+      'client onboarding',
+      'difficult client',
+      'client relationship',
     ],
   },
 
@@ -148,7 +239,26 @@ export const KEYWORD_GROUPS = {
       'project management freelance',
       'all in one freelance',
       'one tool for everything',
-      'freelance',
+      'freelance app',
+      'business management tool',
+      'crm for freelancers',
+    ],
+  },
+
+  // Freelance business pain (lower weight, but catches general frustration)
+  business_pain: {
+    weight: 1,
+    keywords: [
+      'hate admin work',
+      'bookkeeping freelance',
+      'expense tracking freelance',
+      'freelance accounting',
+      'freelance finances',
+      'tax tracking freelance',
+      'running a freelance business',
+      'freelance business management',
+      'solo business',
+      'solopreneur tools',
     ],
   },
 };
